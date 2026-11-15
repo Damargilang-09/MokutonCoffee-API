@@ -5,6 +5,7 @@ import (
 	"MokutonCoffee-API/models"
 	"MokutonCoffee-API/utils"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -19,6 +20,19 @@ type AuthInputRegister struct {
 type AuthInputLogin struct {
 	Email    string `json:"email" binding:"required"`
 	Password string `json:"password" binding:"required,min=6"`
+}
+
+// setAuthCookie: di produksi frontend & backend berbeda subdomain .vercel.app
+// (= cross-site karena vercel.app public suffix), sehingga wajib
+// SameSite=None + Secure. Lokal tetap Lax + Secure=false.
+func setAuthCookie(c *gin.Context, value string, maxAge int) {
+	secure := os.Getenv("VERCEL") != ""
+	sameSite := http.SameSiteLaxMode
+	if secure {
+		sameSite = http.SameSiteNoneMode
+	}
+	c.SetSameSite(sameSite)
+	c.SetCookie("token", value, maxAge, "/", "", secure, true)
 }
 
 func RegisterUser(c *gin.Context) {
@@ -112,15 +126,7 @@ func LoginUser(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie(
-		"token",
-		tokenString,
-		3600*24,
-		"/",
-		"",
-		false,
-		true,
-	)
+	setAuthCookie(c, tokenString, 3600*24)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Login successfully",
@@ -157,8 +163,7 @@ func GetCurrentUser(c *gin.Context) {
 }
 
 func LogoutUser(c *gin.Context) {
-	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie("token", "", -1, "/", "", false, true)
+	setAuthCookie(c, "", -1)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Logout successfully",
