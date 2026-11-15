@@ -62,3 +62,5 @@ Build tools
 
 Other temporary
 *.log
+.vercel
+.env*

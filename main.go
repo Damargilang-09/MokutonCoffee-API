@@ -7,13 +7,15 @@ import (
 )
 
 func main() {
-	if os.Getenv("VERCEL") != "" {
-		// Di Vercel engine dibangun oleh handler api/index.go per cold start.
-		return
+	// Vercel (executable Go runtime) menjalankan binary ini sebagai
+	// long-running server yang listen di $PORT; lokal default :8000.
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8000"
 	}
 
-	log.Println("MokutonCoffee-API listening on :8000")
-	if err := server.New().Run(":8000"); err != nil {
+	log.Println("MokutonCoffee-API listening on :" + port)
+	if err := server.New().Run(":" + port); err != nil {
 		log.Fatal("Server failed:", err)
 	}
 }
