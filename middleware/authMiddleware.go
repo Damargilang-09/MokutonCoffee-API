@@ -95,11 +95,10 @@ func Authorization(allowedRoles ...string) gin.HandlerFunc {
 				c.Next()
 				return
 			}
-
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"error": "You don't have permission to access this resource",
-			})
-
 		}
+
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+			"error": "You don't have permission to access this resource",
+		})
 	}
 }

@@ -176,9 +176,12 @@ func UpdateProduct(c *gin.Context) {
 		})
 
 		if errUpload == nil {
-			//delete image
-			if product.ImageId == "" {
-				ik.Files.Delete(context.Background(), product.ImageId)
+			// hapus gambar lama sebelum mengganti (bug: kondisi tadinya terbalik,
+			// memanggil Delete dengan id kosong sehingga gambar lama jadi yatim)
+			if product.ImageId != "" {
+				if errDel := ik.Files.Delete(context.Background(), product.ImageId); errDel != nil {
+					log.Printf("ImageKit deletion failed: %v", errDel)
+				}
 			}
 
 			//upload image
