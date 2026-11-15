@@ -1,0 +1,64 @@
+Binaries and build artifacts
+/bin/
+/obj/
+/*.a
+/*.o
+/*.so
+/*.dll
+/*.exe
+*.out
+
+IDE and editor folders
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+OS-specific files
+.DS_Store
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+desktop.ini
+Thumbs.db
+
+Environment files
+.env
+.env.example
+
+Config files
+*.cfg
+*.conf
+
+Database files (local)
+*.sqlite3
+*.db
+
+Cache directories
+*.cache/
+cache/
+
+Distribution folders
+dist/
+build/
+
+Temporary files
+*.tmp
+.tmp
+
+Logs
+*.log
+
+Vendor directories (if any)
+vendor/
+
+Node modules (if any)
+node_modules/
+
+Build tools
+*.log
+
+Other temporary
+*.log
