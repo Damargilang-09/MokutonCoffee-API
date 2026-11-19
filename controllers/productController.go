@@ -2,13 +2,15 @@ package controllers
 
 import (
 	"MokutonCoffee-API/config"
+	"MokutonCoffee-API/dto/common"
+	"MokutonCoffee-API/dto/request"
+	"MokutonCoffee-API/dto/response"
 	"MokutonCoffee-API/models"
 	"MokutonCoffee-API/utils"
 	"context"
 	"log"
 
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -16,33 +18,18 @@ import (
 )
 
 func CreateProduct(c *gin.Context) {
-	// 1. Ambil dan validasi input teks terlebih dahulu sebelum upload file
-	sku := c.PostForm("sku")
-	name := c.PostForm("name")
-	description := c.PostForm("description")
 
-	if sku == "" || name == "" {
+	var input request.CreateProductRequest
+	if err := c.ShouldBind(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "SKU and Name are required",
+			"success": false,
+			"message": "Invalid request input",
+			"error":   err.Error(),
 		})
 		return
 	}
 
-	stock, err := strconv.Atoi(c.PostForm("stock"))
-	if err != nil || stock < 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Stock must be a valid positive number",
-		})
-		return
-	}
-
-	price, err := strconv.ParseInt(c.PostForm("price"), 10, 64)
-	if err != nil || price <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Price must be a valid number greater than 0",
-		})
-		return
-	}
+	//Upload Image
 
 	file, header, err := c.Request.FormFile("image")
 	if err != nil {
@@ -54,10 +41,12 @@ func CreateProduct(c *gin.Context) {
 	defer file.Close()
 
 	ik := utils.InitImageKit()
-	uploadRes, errUpload := ik.Files.Upload(context.Background(), imagekit.FileUploadParams{
-		File:     file,
-		FileName: header.Filename,
-	})
+	uploadRes, errUpload := ik.Files.Upload(
+		context.Background(),
+		imagekit.FileUploadParams{
+			File:     file,
+			FileName: header.Filename,
+		})
 
 	if errUpload != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -66,14 +55,14 @@ func CreateProduct(c *gin.Context) {
 		return
 	}
 
-	product := models.Product{
-		SKU:         sku,
-		Name:        name,
+	product := models.Product {
+		SKU:         input.SKU,
+		Name:        input.Name,
 		Image:       uploadRes.URL,
 		ImageId:     uploadRes.FileID,
-		Description: description,
-		Stock:       stock,
-		Price:       price,
+		Description: input.Description,
+		Stock:       *input.Stock,
+		Price:       *input.Price,
 	}
 
 	productCreated := config.DB.Create(&product).Error
@@ -85,14 +74,24 @@ func CreateProduct(c *gin.Context) {
 		return
 	}
 
+	result := response.ProductResponse{
+		ID:          uuid.UUID(product.ID),
+		SKU:         product.SKU,
+		Name:        product.Name,
+		Image:       product.Image,
+		Description: product.Description,
+		Stock:       product.Stock,
+		Price:       product.Price,
+	}
+
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "New product created",
-		"data":    product,
+		"data":    result,
 	})
 }
 
 func GetAllProducts(c *gin.Context) {
-	var query models.PaginationQuery
+	var query common.PaginationQuery
 	c.ShouldBindQuery(&query)
 
 	var products []models.Product
@@ -162,6 +161,8 @@ func UpdateProduct(c *gin.Context) {
 		return
 	}
 
+	var input request.UpdateProductRequest
+
 	file, header, err := c.Request.FormFile("image")
 	if err == nil {
 		defer file.Close()
@@ -176,8 +177,7 @@ func UpdateProduct(c *gin.Context) {
 		})
 
 		if errUpload == nil {
-			// hapus gambar lama sebelum mengganti (bug: kondisi tadinya terbalik,
-			// memanggil Delete dengan id kosong sehingga gambar lama jadi yatim)
+			// hapus gambar lama sebelum mengganti
 			if product.ImageId != "" {
 				if errDel := ik.Files.Delete(context.Background(), product.ImageId); errDel != nil {
 					log.Printf("ImageKit deletion failed: %v", errDel)
@@ -190,40 +190,24 @@ func UpdateProduct(c *gin.Context) {
 		}
 	}
 
-	if sku := c.PostForm("sku"); sku != "" {
+	if sku := input.SKU; sku != "" {
 		product.SKU = sku
 	}
 
-	if name := c.PostForm("name"); name != "" {
+	if name := input.Name; name != "" {
 		product.Name = name
 	}
 
-	if description := c.PostForm("description"); description != "" {
+	if description := input.Description; description != "" {
 		product.Description = description
 	}
 
-	stockStr := c.PostForm("stock")
-	if stockStr != "" {
-		stock, err := strconv.Atoi(stockStr)
-		if err != nil || stock <= 0 {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Stock must be a valid non-negative integer",
-			})
-			return
-		}
-		product.Stock = stock
+	if stock := input.Stock; stock != nil {
+		product.Stock = *stock
 	}
 
-	priceStr := c.PostForm("price")
-	if priceStr != "" {
-		price, err := strconv.Atoi(priceStr)
-		if err != nil || price < 0 {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Stock must be a valid non-negative integer",
-			})
-			return
-		}
-		product.Price = int64(price)
+	if price := input.Price; price != nil {
+		product.Price = *price
 	}
 
 	if err := config.DB.Save(&product).Error; err != nil {

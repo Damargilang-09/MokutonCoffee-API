@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"MokutonCoffee-API/config"
+	"MokutonCoffee-API/dto/request"
+	"MokutonCoffee-API/dto/response"
 	"MokutonCoffee-API/models"
 	"MokutonCoffee-API/utils"
 	"net/http"
@@ -11,11 +13,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type AuthInputRegister struct {
-	Name     string `json:"name" binding:"required"`
-	Email    string `json:"email" binding:"required"`
-	Password string `json:"password" binding:"required,min=6"`
-}
 
 type AuthInputLogin struct {
 	Email    string `json:"email" binding:"required"`
@@ -36,7 +33,7 @@ func setAuthCookie(c *gin.Context, value string, maxAge int) {
 }
 
 func RegisterUser(c *gin.Context) {
-	var input AuthInputRegister
+	var input request.RegisterRequest
 
 	//validation
 	err := c.ShouldBindJSON(&input)
@@ -128,12 +125,14 @@ func LoginUser(c *gin.Context) {
 
 	setAuthCookie(c, tokenString, 3600*24)
 
+	result := response.UserResponse{
+		Email: user.Email,
+		Name: user.Name,
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Login successfully",
-		"user": gin.H{
-			"Name":  user.Name,
-			"Email": user.Email,
-		},
+		"user": result,
 	})
 }
 
@@ -149,7 +148,7 @@ func GetCurrentUser(c *gin.Context) {
 
 	var user models.User
 
-	userData := config.DB.Select("id", "role", "name", "email").First(&user, userId).Error
+	userData := config.DB.First(&user, userId).Error
 	if userData != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": "User not found",
@@ -157,8 +156,15 @@ func GetCurrentUser(c *gin.Context) {
 		return
 	}
 
+	result := response.UserResponse{
+		Name: user.Name,
+		Email: user.Email,
+	}
+
+
+
 	c.JSON(http.StatusOK, gin.H{
-		"user": user,
+		"user": result,
 	})
 }
 

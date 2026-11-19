@@ -1,4 +1,4 @@
-package models
+package common
 
 import "gorm.io/gorm"
 
@@ -21,7 +21,7 @@ func (p *PaginationQuery) Paginate() func(db *gorm.DB) *gorm.DB {
 		case p.Limit <= 0:
 			p.Limit = 10
 		}
-		
+
 		offset := (p.Page - 1) * p.Limit
 		return db.Offset(offset).Limit(p.Limit)
 	}
